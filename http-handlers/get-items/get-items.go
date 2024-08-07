@@ -2,9 +2,8 @@ package get_items
 
 import (
 	"encoding/csv"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	"log/slog"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,24 +16,18 @@ type Response struct {
 	models.Response
 }
 
-func New(logger *slog.Logger) http.HandlerFunc {
+func New() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.get-items.New"
 
-		log := logger.With(
-			slog.String("op", op),
-			slog.String("request_id", middleware.GetReqID(r.Context())),
-		)
+		ids, err := parsUrl(r.RequestURI)
 
-		ids, err := parsUrl(r.RequestURI, log)
-
-		items, err := findItem(ids, log)
+		items, err := findItem(ids)
 		if err != nil {
-			log.Error("failed to find items", "id", ids)
+			log.Printf("failed to find items: %v", ids)
 
-			render.Status(r, http.StatusInternalServerError)
+			render.Status(r, http.StatusBadRequest)
 
-			render.JSON(w, r, models.Error("internal server error"))
+			render.JSON(w, r, models.Error("bad request"))
 		}
 		render.JSON(w, r, Response{
 			Items:    items,
@@ -43,10 +36,10 @@ func New(logger *slog.Logger) http.HandlerFunc {
 	}
 }
 
-func findItem(ids []string, log *slog.Logger) ([]map[string]interface{}, error) {
+func findItem(ids []string) ([]map[string]interface{}, error) {
 	file, err := os.Open("ueba.csv")
 	if err != nil {
-		log.Error("error while opening file", err)
+		log.Printf("error while opening file: %v", err)
 	}
 	defer file.Close()
 
@@ -54,7 +47,7 @@ func findItem(ids []string, log *slog.Logger) ([]map[string]interface{}, error) 
 
 	some, err := csvReader.ReadAll()
 	if err != nil {
-		log.Error("error while reading file", err)
+		log.Printf("error while reading file: %v", err)
 
 		return nil, err
 	}
@@ -77,10 +70,10 @@ func findItem(ids []string, log *slog.Logger) ([]map[string]interface{}, error) 
 	return data, nil
 }
 
-func parsUrl(rowUrl string, log *slog.Logger) ([]string, error) {
+func parsUrl(rowUrl string) ([]string, error) {
 	parsedUrl, err := url.Parse(rowUrl)
 	if err != nil {
-		log.Error("failed to parse url", rowUrl)
+		log.Printf("failed to parse url: %v", err)
 
 		return nil, err
 	}

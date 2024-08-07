@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"log/slog"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	router := chi.NewRouter()
 
@@ -23,7 +22,7 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Get("/get-items", get_items.New(log))
+	router.Get("/get-items", get_items.New())
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -35,23 +34,23 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Error("failed to start server")
+			log.Print("failed to start server")
 		}
 	}()
 
-	log.Info("server started")
+	log.Print("server started")
 
 	<-done
-	log.Info("stopping server")
+	log.Print("stopping server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Error("failed to stop server", err)
+		log.Printf("failed to stop server: %v", err)
 
 		return
 	}
 
-	log.Info("server stopped")
+	log.Print("server stopped")
 }
