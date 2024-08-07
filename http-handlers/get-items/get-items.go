@@ -77,7 +77,7 @@ func parsUrl(rowUrl string) ([]string, error) {
 
 		return nil, err
 	}
-	str := strings.Trim(parsedUrl.RawQuery, "ids=")
+	str := strings.Trim(parsedUrl.RawQuery, "id=")
 	ids := strings.Split(str, "%")
 
 	return ids, nil
